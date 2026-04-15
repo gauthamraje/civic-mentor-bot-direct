@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Socratic Civic Mentor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .chat-height { height: calc(100vh - 140px); }
+        .drawer-transition { transition: transform 0.3s ease-in-out; }
+        .drawer-hidden { transform: translateY(100%); }
+        .bubble-in { animation: bubbleIn 0.2s ease-out; }
+        @keyframes bubbleIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+
+    <!-- Mobile Container -->
+    <div class="w-full max-w-md h-screen bg-white shadow-2xl relative flex flex-col overflow-hidden border-x border-gray-100">
+        
+        <!-- Header -->
+        <header class="p-4 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center">
+            <div>
+                <h1 class="font-semibold text-lg text-gray-900">Civic Mentor</h1>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <span class="text-xs text-gray-500">Direct Encyclopedia Mode</span>
+                </div>
+            </div>
+            <button onclick="resetSession()" class="text-xs text-blue-600 font-medium px-2 py-1 hover:bg-blue-50 rounded">Reset</button>
+        </header>
+
+        <!-- Chat Area -->
+        <main id="chat-window" class="flex-1 overflow-y-auto p-4 space-y-4 chat-height bg-gray-50/50">
+            <!-- Initial Message -->
+            <div class="flex flex-col items-start bubble-in">
+                <div class="bg-white border text-gray-800 p-3 rounded-2xl rounded-bl-none max-w-[85%] shadow-sm text-sm">
+                    Hi! I'm your Socratic Civic Mentor. Report any civic or climate issue, and I'll give you the exact "True Gold" blueprint to solve it immediately.
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden px-4 py-2 flex items-center gap-2">
+            <div class="flex space-x-1">
+                <div class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"></div>
+                <div class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                <div class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+            </div>
+            <span class="text-xs text-blue-500 font-medium">Mentor is reflecting...</span>
+        </div>
+
+        <!-- Input Area -->
+        <footer class="p-4 bg-white border-t sticky bottom-0 z-20">
+            <form id="chat-form" class="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2 focus-within:ring-2 ring-blue-500 transition-all">
+                <input id="user-input" type="text" placeholder="Explain the issue..." class="flex-1 bg-transparent border-none focus:outline-none text-sm placeholder:text-gray-400">
+                <button type="submit" class="bg-blue-600 text-white p-1.5 rounded-full hover:bg-blue-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </form>
+        </footer>
+
+        <!-- Action Drawer (Slide up) -->
+        <div id="drawer" class="absolute inset-0 bg-black/40 z-30 drawer-transition drawer-hidden flex flex-col justify-end">
+            <div class="bg-white rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                <div class="h-1.5 w-12 bg-gray-200 rounded-full mx-auto my-3 cursor-pointer" onclick="toggleDrawer(false)"></div>
+                <div class="flex justify-between items-center px-6 py-2 border-b">
+                    <h2 class="font-semibold text-gray-900">Technical Blueprint</h2>
+                    <button onclick="toggleDrawer(false)" class="text-gray-400 hover:text-gray-600">&times;</button>
+                </div>
+                <div id="drawer-content" class="p-6 overflow-y-auto text-sm prose prose-sm max-w-none">
+                    <!-- Dynamic content injected here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let threadId = localStorage.getItem('thread_id');
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const loading = document.getElementById('loading');
+        const drawer = document.getElementById('drawer');
+        const drawerContent = document.getElementById('drawer-content');
+
+        // Initialize session
+        async function initSession() {
+            if (!threadId) {
+                const res = await fetch('/threads', { method: 'POST' });
+                const data = await res.json();
+                threadId = data.thread_id;
+                localStorage.setItem('thread_id', threadId);
+            }
+        }
+
+        function appendMessage(role, content) {
+            const div = document.createElement('div');
+            div.className = `flex flex-col ${role === 'user' ? 'items-end' : 'items-start'} bubble-in`;
+            
+            const inner = document.createElement('div');
+            inner.className = role === 'user' 
+                ? 'bg-blue-600 text-white p-3 rounded-2xl rounded-br-none max-w-[85%] shadow-md text-sm'
+                : 'bg-white border text-gray-800 p-3 rounded-2xl rounded-bl-none max-w-[85%] shadow-sm text-sm';
+            
+            inner.innerHTML = marked.parse(content);
+            div.appendChild(inner);
+            chatWindow.appendChild(div);
+            window.scrollTo(0, document.body.scrollHeight);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function toggleDrawer(show, content = '') {
+            if (show) {
+                drawerContent.innerHTML = marked.parse(content);
+                drawer.classList.remove('drawer-hidden');
+            } else {
+                drawer.classList.add('drawer-hidden');
+            }
+        }
+
+        function resetSession() {
+            localStorage.removeItem('thread_id');
+            location.reload();
+        }
+
+        async function pollStatus(threadId, runId) {
+            loading.classList.remove('hidden');
+            const poll = setInterval(async () => {
+                const res = await fetch(`/threads/${threadId}/runs/${runId}`);
+                const data = await res.json();
+                if (data.status === 'completed') {
+                    clearInterval(poll);
+                    loading.classList.add('hidden');
+                    fetchMessages(threadId);
+                } else if (data.status === 'failed') {
+                    clearInterval(poll);
+                    loading.classList.add('hidden');
+                    alert('Mentor run failed. Check API logs.');
+                }
+            }, 1500);
+        }
+
+        async function fetchMessages(threadId) {
+            const res = await fetch(`/threads/${threadId}/messages`);
+            const data = await res.json();
+            const lastMsg = data.messages[data.messages.length - 1];
+            if (lastMsg.role === 'assistant') {
+                const parts = lastMsg.content.split('---');
+                appendMessage('assistant', parts[0]);
+                if (parts.length > 1) {
+                    toggleDrawer(true, parts[1]);
+                }
+            }
+        }
+
+        chatForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const content = userInput.value.trim();
+            if (!content) return;
+
+            appendMessage('user', content);
+            userInput.value = '';
+
+            const res = await fetch(`/threads/${threadId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            const data = await res.json();
+            pollStatus(threadId, data.run_id);
+        };
+
+        // Ready
+        initSession();
+    </script>
+</body>
+</html>
