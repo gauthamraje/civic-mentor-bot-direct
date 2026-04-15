@@ -1,12 +1,11 @@
 import os
 import time
+import sys
 from openai import OpenAI
 
 # -----------------------------------------------------------------------------
 # CONFIGURATION
 # -----------------------------------------------------------------------------
-# Set your API Key as an environment variable: export OPENAI_API_KEY='your-key'
-# Or replace directly below (NOT recommended for public sharing)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 CSV_FILE = "100_stories.csv"
@@ -27,39 +26,49 @@ USE ONLY the technical fixes, legal citations, and templates provided in the upl
 def initialize():
     print(f"--- Initializing {ASSISTANT_NAME} ---")
     
-    # 1. Upload File
-    print("1. Uploading 100_stories.csv...")
-    file = client.files.create(
-        file=open(CSV_FILE, "rb"),
-        purpose="assistants"
-    )
-    
-    # 2. Create Vector Store
-    print("2. Creating Vector Store...")
-    vector_store = client.beta.vector_stores.create(
-        name="Civic Action Blueprints",
-        file_ids=[file.id]
-    )
-    
-    # 3. Create Assistant
-    print("3. Creating Assistant...")
-    assistant = client.beta.assistants.create(
-        name=ASSISTANT_NAME,
-        instructions=ASSISTANT_INSTRUCTIONS,
-        model="gpt-4o",
-        tools=[{"type": "file_search"}],
-        tool_resources={
-            "file_search": {
-                "vector_store_ids": [vector_store.id]
+    try:
+        # 1. Upload File
+        print("1. Uploading 100_stories.csv...")
+        file = client.files.create(
+            file=open(CSV_FILE, "rb"),
+            purpose="assistants"
+        )
+        
+        # 2. Create Vector Store (Using v2 Beta path)
+        print("2. Creating Vector Store...")
+        # Attempting explicit v2 naming
+        vector_store = client.beta.vector_stores.create(
+            name="Civic Action Blueprints",
+            file_ids=[file.id]
+        )
+        
+        # 3. Create Assistant
+        print("3. Creating Assistant...")
+        assistant = client.beta.assistants.create(
+            name=ASSISTANT_NAME,
+            instructions=ASSISTANT_INSTRUCTIONS,
+            model="gpt-4o",
+            tools=[{"type": "file_search"}],
+            tool_resources={
+                "file_search": {
+                    "vector_store_ids": [vector_store.id]
+                }
             }
-        }
-    )
-    
-    print("\n--- SETUP COMPLETE ---")
-    print(f"ASSISTANT_ID: {assistant.id}")
-    print(f"VECTOR_STORE_ID: {vector_store.id}")
-    print("-" * 23)
-    print("Action Required: Copy the ASSISTANT_ID above and add it to your .env file or deployment config.")
+        )
+        
+        print("\n--- SETUP COMPLETE ---")
+        print(f"ASSISTANT_ID: {assistant.id}")
+        print(f"VECTOR_STORE_ID: {vector_store.id}")
+        print("-" * 23)
+        print("Action Required: Copy the ASSISTANT_ID above and add it to your .env file or deployment config.")
+
+    except AttributeError as e:
+        print(f"\n❌ Error: Your OpenAI library version is outdated or incompatible.")
+        print(f"Detected Error: {e}")
+        print("\nPlease run this command to fix it:")
+        print("  ./venv/bin/pip install --upgrade openai")
+    except Exception as e:
+        print(f"\n❌ An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     if not os.path.exists(CSV_FILE):
