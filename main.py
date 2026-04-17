@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +18,11 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 ASSISTANT_ID = os.environ.get("ASSISTANT_ID")
 LOG_SHEET_URL = os.environ.get("LOG_SHEET_URL")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Guard against missing API key at startup
+if not OPENAI_API_KEY:
+    print("WARNING: OPENAI_API_KEY is not set. The assistant will not function.")
+
+client = OpenAI(api_key=OPENAI_API_KEY or "missing")
 
 app = FastAPI(title="Socratic civic Mentor API")
 
@@ -110,9 +115,9 @@ async def send_to_sheet(entry: LogEntry):
     """Helper to send log to Google Sheets via Apps Script Hook."""
     if not LOG_SHEET_URL:
         return
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient() as http_client:
         try:
-            await client.post(LOG_SHEET_URL, json=entry.dict())
+            await http_client.post(LOG_SHEET_URL, json=entry.dict())
         except Exception as e:
             print(f"Failed to log to Google Sheets: {e}")
 
@@ -135,7 +140,10 @@ except:
 def serve_index():
     """Serves the main mobile-fist UI."""
     try:
-        with open("static/index.html", "r") as f:
-            return f.read()
-    except FileNotFoundError:
-        return "<h1>Project Initialized.</h1><p>Static index.html not yet created.</p>"
+        # Use absolute path resolution for Vercel
+        index_path = Path(__file__).parent / "static" / "index.html"
+        if index_path.exists():
+            return index_path.read_text()
+        return "<h1>Project Initialized.</h1><p>Static index.html not found.</p>"
+    except Exception as e:
+        return f"<h1>Server Error</h1><p>{str(e)}</p>"
