@@ -115,7 +115,7 @@ async def send_to_sheet(entry: LogEntry):
     """Helper to send log to Google Sheets via Apps Script Hook."""
     if not LOG_SHEET_URL:
         return
-    async with httpx.AsyncClient() as http_client:
+    async with httpx.AsyncClient(follow_redirects=True) as http_client:
         try:
             await http_client.post(LOG_SHEET_URL, json=entry.dict())
         except Exception as e:
