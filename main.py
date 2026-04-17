@@ -1,12 +1,11 @@
-import os
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
+import httpx
 
 # -----------------------------------------------------------------------------
 # CONFIGURATION
@@ -14,6 +13,7 @@ from dotenv import load_dotenv
 load_dotenv() # Load from .env file
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 ASSISTANT_ID = os.environ.get("ASSISTANT_ID")
+LOG_SHEET_URL = os.environ.get("LOG_SHEET_URL")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -39,6 +39,11 @@ class ThreadResponse(BaseModel):
 class RunResponse(BaseModel):
     thread_id: str
     run_id: str
+
+class LogEntry(BaseModel):
+    thread_id: str
+    user_query: str
+    bot_response: str
 
 # -----------------------------------------------------------------------------
 # API ROUTES
@@ -98,6 +103,22 @@ def get_messages(thread_id: str):
         ][::-1]} # Reverse to get chronological order
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+async def send_to_sheet(entry: LogEntry):
+    """Helper to send log to Google Sheets via Apps Script Hook."""
+    if not LOG_SHEET_URL:
+        return
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(LOG_SHEET_URL, json=entry.dict())
+        except Exception as e:
+            print(f"Failed to log to Google Sheets: {e}")
+
+@app.post("/log")
+async def log_interaction(entry: LogEntry, background_tasks: BackgroundTasks):
+    """Endpoint called by frontend to log a completed turn."""
+    background_tasks.add_task(send_to_sheet, entry)
+    return {"status": "logging_queued"}
 
 # -----------------------------------------------------------------------------
 # FRONTEND SERVING

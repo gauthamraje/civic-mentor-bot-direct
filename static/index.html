@@ -187,7 +187,11 @@
         function appendMessage(role, content) {
             const div = document.createElement('div');
             div.className = `bubble ${role === 'user' ? 'user-bubble' : 'assistant-bubble'}`;
-            div.innerHTML = marked.parse(content);
+            
+            // Clean up citation markers like 【4:0†source】
+            const cleanedContent = content.replace(/【\d+:\d+†source】/g, '');
+            
+            div.innerHTML = marked.parse(cleanedContent);
             chatWindow.appendChild(div);
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
@@ -240,6 +244,20 @@
                 const parts = last.content.split('---');
                 appendMessage('assistant', parts[0]);
                 if (parts.length > 1) toggleDrawer(true, parts[1]);
+                
+                // Logging to Google Sheets
+                const userMsg = data.messages[data.messages.length - 2];
+                if (userMsg && userMsg.role === 'user') {
+                    fetch('/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            thread_id: tid,
+                            user_query: userMsg.content,
+                            bot_response: parts[0] // Just log the conversational part
+                        })
+                    });
+                }
             }
         }
 

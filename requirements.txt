@@ -4,3 +4,4 @@ openai
 pydantic
 python-multipart
 python-dotenv
+httpx
