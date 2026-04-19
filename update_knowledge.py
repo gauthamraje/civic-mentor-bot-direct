@@ -1,17 +1,20 @@
 import os
 import time
-import sys
 from openai import OpenAI
+from dotenv import load_dotenv
 
-# -----------------------------------------------------------------------------
-# CONFIGURATION
-# -----------------------------------------------------------------------------
+# Load environment variables
+load_dotenv()
+
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-CSV_FILE = "100_stories.csv"
-ASSISTANT_NAME = "Socratic Civic Mentor"
-ASSISTANT_INSTRUCTIONS = """
-You are a Socratic Civic Mentor for young change-makers in India. Your goal is to turn civic frustration into actionable 'Missions' using your solution library (100_stories.csv).
+ASSISTANT_ID = os.environ.get("ASSISTANT_ID")
+# We retrieved this during research
+VECTOR_STORE_ID = "vs_69df78ef4ce08191b5b40ab178dc298e" 
+DOCX_FILE = "400_stories.docx"
+
+NEW_INSTRUCTIONS = """
+You are a Socratic Civic Mentor for young change-makers in India. Your goal is to turn civic frustration into actionable 'Missions' using your solution library (500 missions total, including 100_stories.csv and 400_stories.docx).
 
 CORE BEHAVIOR:
 1. MENTOR PERSONA: Be encouraging, punchy, and action-oriented. Use a warm, conversational tone. Avoid sounding like a database or a government report.
@@ -29,7 +32,7 @@ CORE BEHAVIOR:
     - Start with a simple, encouraging narrative and the 'Immediate First Step'.
     - Then, use "---" (Triple Dash) to separate the technical blueprints. 
     Everything after "---" will be shown in a secondary 'Technical Drawer' by the app. Put Audit Tables, Legal Citations, and official SOPs there.
-6. NO CITATIONS: Never include citation markers like 【...†source】 in your responses.
+6. NO CITATIONS: Never include citation markers like 【...†source】 in your responses. They are for your reference only.
 7. MULTILINGUAL: Detect and mirror the user's language (Hindi, Kannada, Hinglish, etc.), but keep technical keys like "SBM-U" or "NDMA" in English brackets if helpful for context.
 
 STRICT GUARDRAIL:
@@ -40,57 +43,49 @@ STRICT GUARDRAIL:
 USE ONLY the technical fixes and templates provided in the uploaded knowledge base, but translate them into an inspiring mentor voice.
 """.strip()
 
-def initialize():
-    print(f"--- Initializing {ASSISTANT_NAME} ---")
+def update():
+    print(f"--- Updating Knowledge for Assistant {ASSISTANT_ID} ---")
     
     try:
-        # 1. Upload File
-        print("1. Uploading 100_stories.csv...")
+        # 1. Upload the new DOCX file
+        print(f"1. Uploading {DOCX_FILE}...")
         file = client.files.create(
-            file=open(CSV_FILE, "rb"),
+            file=open(DOCX_FILE, "rb"),
             purpose="assistants"
         )
-        
-        # 2. Create Vector Store (Using v2 Beta path)
-        print("2. Creating Vector Store...")
-        # Attempting explicit v2 naming
-        vector_store = client.beta.vector_stores.create(
-            name="Civic Action Blueprints",
-            file_ids=[file.id]
+        print(f"   File uploaded with ID: {file.id}")
+
+        # 2. Add the file to the existing vector store
+        print(f"2. Adding file to Vector Store {VECTOR_STORE_ID}...")
+        vector_store_file = client.vector_stores.files.create(
+            vector_store_id=VECTOR_STORE_ID,
+            file_id=file.id
         )
-        
-        # 3. Create Assistant
-        print("3. Creating Assistant...")
-        assistant = client.beta.assistants.create(
-            name=ASSISTANT_NAME,
-            instructions=ASSISTANT_INSTRUCTIONS,
-            model="gpt-4o",
-            tools=[{"type": "file_search"}],
+        print(f"   File added to vector store.")
+
+        # 3. Update Assistant Instructions
+        print("3. Updating Assistant instructions...")
+        client.beta.assistants.update(
+            assistant_id=ASSISTANT_ID,
+            instructions=NEW_INSTRUCTIONS,
             tool_resources={
                 "file_search": {
-                    "vector_store_ids": [vector_store.id]
+                    "vector_store_ids": [VECTOR_STORE_ID]
                 }
             }
         )
-        
-        print("\n--- SETUP COMPLETE ---")
-        print(f"ASSISTANT_ID: {assistant.id}")
-        print(f"VECTOR_STORE_ID: {vector_store.id}")
-        print("-" * 23)
-        print("Action Required: Copy the ASSISTANT_ID above and add it to your .env file or deployment config.")
+        print("   Assistant instructions updated.")
 
-    except AttributeError as e:
-        print(f"\n❌ Error: Your OpenAI library version is outdated or incompatible.")
-        print(f"Detected Error: {e}")
-        print("\nPlease run this command to fix it:")
-        print("  ./venv/bin/pip install --upgrade openai")
+        print("\n--- UPDATE COMPLETE ---")
+        print(f"Assistant {ASSISTANT_ID} is now using 500 stories.")
+
     except Exception as e:
-        print(f"\n❌ An unexpected error occurred: {e}")
+        print(f"\n❌ An error occurred: {e}")
 
 if __name__ == "__main__":
-    if not os.path.exists(CSV_FILE):
-        print(f"Error: {CSV_FILE} not found. Ensure you are running this from the project directory.")
+    if not os.path.exists(DOCX_FILE):
+        print(f"Error: {DOCX_FILE} not found.")
     elif not os.environ.get("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY not found in environment variables.")
+        print("Error: OPENAI_API_KEY not found.")
     else:
-        initialize()
+        update()
