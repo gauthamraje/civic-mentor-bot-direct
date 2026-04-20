@@ -319,10 +319,10 @@
         const chipsContainer = document.getElementById('chips-container');
 
         const THEMES = [
-            { label: "🌍 Cleanliness", value: "Tell me about Cleanliness missions" },
-            { label: "💡 Safety", value: "What are the Safety & Street missions?" },
-            { label: "🏫 Eco-Campus", value: "Help me with Eco-Campus changes" },
-            { label: "💧 Water", value: "Fixing Water & Climate issues" }
+            { label: "🌍 Cleanliness & Waste", value: "Show me Cleanliness & Waste solutions" },
+            { label: "💡 Safety & Streets", value: "Help me with Safety & Street improvements" },
+            { label: "🏫 Eco-Campus", value: "How can I make my School/College greener?" },
+            { label: "💧 Water & Climate", value: "Find missions for Water & Climate action" }
         ];
 
         async function initSession() {
@@ -334,12 +334,11 @@
                 
                 // Show initial greeting
                 setTimeout(() => {
-                    appendMessage('assistant', "Welcome Solve Ninja! I am your Civic Mentor. I'm here to help you turn civic frustration into action. Do you have a specific problem in mind, or would you like to explore some mission themes?");
+                    appendMessage('assistant', "Welcome Solve Ninja! I am your Civic Mentor. \n\nYou are backed by **500+ verified community solutions**. Ready to turn civic frustration into action? \n\nTell me a bit about the problem you discovered.");
                     renderChips(THEMES);
                 }, 500);
             } else {
-                // Re-fetch existing messages if needed, or just greet
-                appendMessage('assistant', "Welcome back! What's on your mind today?");
+                appendMessage('assistant', "Welcome back! Ready to continue your change-maker journey?");
             }
         }
 
@@ -349,6 +348,14 @@
                 chipsContainer.style.display = 'none';
                 return;
             }
+            
+            // Add a category header
+            const header = document.createElement('div');
+            header.style.cssText = 'width: 100%; font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.5rem; padding-left: 0.25rem;';
+            header.textContent = "Explore Solution Categories:";
+            chipsContainer.appendChild(header);
+            chipsContainer.style.flexWrap = 'wrap';
+            
             chipsContainer.style.display = 'flex';
             items.forEach(item => {
                 const div = document.createElement('div');
@@ -366,8 +373,23 @@
             const div = document.createElement('div');
             div.className = `bubble ${role === 'user' ? 'user-bubble' : 'assistant-bubble'}`;
             
-            const cleanedContent = content.replace(/【\d+:\d+†source】/g, '');
-            div.innerHTML = marked.parse(cleanedContent);
+            // Handle splitting technical details
+            const parts = content.split('---');
+            const mainContent = parts[0].replace(/【\d+:\d+†source】/g, '');
+            div.innerHTML = marked.parse(mainContent);
+
+            // If there are technical details (part 2+), add a button
+            if (parts.length > 1 && role === 'assistant') {
+                const btn = document.createElement('button');
+                btn.className = 'mt-3 flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors';
+                btn.innerHTML = `
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    View My Action Blueprint
+                `;
+                btn.onclick = () => toggleDrawer(true, parts.slice(1).join('---'));
+                div.appendChild(btn);
+            }
+
             chatWindow.appendChild(div);
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
@@ -422,12 +444,11 @@
             const data = await res.json();
             const last = data.messages[data.messages.length - 1];
             if (last.role === 'assistant') {
-                const parts = last.content.split('---');
-                appendMessage('assistant', parts[0]);
-                if (parts.length > 1) toggleDrawer(true, parts[1]);
+                appendMessage('assistant', last.content);
                 
                 // Smart Chip Detection
-                if (parts[0].toLowerCase().includes('passionate about') || parts[0].toLowerCase().includes('area')) {
+                const lowerText = last.content.toLowerCase();
+                if (lowerText.includes('passionate about') || lowerText.includes('theme') || lowerText.includes('area')) {
                     renderChips(THEMES);
                 }
 
@@ -440,7 +461,7 @@
                         body: JSON.stringify({
                             thread_id: tid,
                             user_query: userMsg.content,
-                            bot_response: parts[0]
+                            bot_response: last.content.split('---')[0]
                         })
                     });
                 }
