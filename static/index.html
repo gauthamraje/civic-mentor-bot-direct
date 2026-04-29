@@ -247,13 +247,60 @@
             50%, 100% { background-color: #e2e8f0; }
         }
 
-        /* Markdown Styling */
-        #chat-window h1, #chat-window h2, #drawer h1, #drawer h2 { font-weight: 600; margin-top: 0.5rem; }
-        #chat-window p, #drawer p { margin-bottom: 0.75rem; }
-        #chat-window ul, #drawer ul { padding-left: 1.25rem; list-style-type: disc; margin-bottom: 0.75rem; }
-        #drawer table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
-        #drawer th { background: #f8fafc; text-align: left; padding: 0.75rem; border: 1px solid #f1f5f9; }
-        #drawer td { padding: 0.75rem; border: 1px solid #f1f5f9; }
+        /* Choice Board Styling */
+        #welcome-screen {
+            position: absolute;
+            inset: 0;
+            background: white;
+            z-index: 40;
+            display: none;
+            flex-direction: column;
+            padding: 2rem 1.5rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .choice-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .choice-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.25rem;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: left;
+        }
+        .choice-card:hover {
+            border-color: var(--primary);
+            background: #f5f3ff;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.1);
+        }
+        .choice-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            color: var(--primary);
+        }
+        .choice-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-main);
+            line-height: 1.25;
+        }
     </style>
 </head>
 <body>
@@ -264,11 +311,54 @@
                 <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></div>
                 Civic Mentor
             </div>
-            <div class="shield-badge">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.11v4.71c0 4.52-3.12 8.71-7 9.87-3.88-1.16-7-5.35-7-9.87V6.29l7-3.11z"/></svg>
-                500+ Verified Solutions
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div class="shield-badge" style="font-size: 0.55rem; padding: 0.25rem 0.5rem;">
+                    <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.11v4.71c0 4.52-3.12 8.71-7 9.87-3.88-1.16-7-5.35-7-9.87V6.29l7-3.11z"/></svg>
+                    500+ Missions
+                </div>
+                <button onclick="resetSession()" style="background: #f1f5f9; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; transition: all 0.2s; padding: 0;" title="Back to Main Menu" onmouseover="this.style.color='var(--primary)'; this.style.background='#e0e7ff'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='#f1f5f9'">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                </button>
             </div>
         </header>
+
+        <div id="welcome-screen">
+            <div style="margin-top: 2rem;">
+                <h1 style="font-size: 1.75rem; font-weight: 700; color: #0f172a; line-height: 1.2;">Welcome,<br>Solve Ninja!</h1>
+                <p style="color: var(--text-muted); margin-top: 0.75rem; font-size: 0.9375rem;">I am your Civic Mentor. How can I help you take action today?</p>
+            </div>
+
+            <div class="choice-grid">
+                <div class="choice-card" onclick="selectOption(1, 'Know about Reap Benefit')">
+                    <div class="choice-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div class="choice-title">Know about Reap Benefit</div>
+                </div>
+                <div class="choice-card" onclick="selectOption(2, 'Build real skills by solving problems')">
+                    <div class="choice-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                    </div>
+                    <div class="choice-title">Build real skills by solving problems</div>
+                </div>
+                <div class="choice-card" onclick="selectOption(3, 'I have an idea but need mentoring')">
+                    <div class="choice-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </div>
+                    <div class="choice-title">I have an idea but need mentoring</div>
+                </div>
+                <div class="choice-card" onclick="selectOption(4, 'I am facing a problem need solutions')">
+                    <div class="choice-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <div class="choice-title">I am facing a problem need solutions</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: auto; padding-bottom: 2rem; text-align: center;">
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Trusted by 50,000+ Ninjas across India</p>
+            </div>
+        </div>
 
         <main id="chat-window">
             <!-- Messages injected here -->
@@ -335,13 +425,28 @@
                 threadId = data.thread_id;
                 localStorage.setItem('thread_id', threadId);
                 
-                // Show initial greeting
-                setTimeout(() => {
-                    appendMessage('assistant', "Welcome Solve Ninja! I am your Civic Mentor. \n\nYou are standing on a shield of **500+ community-verified solutions**, which will grow to **40,000 within a month**. \n\nI turn civic frustration into **Missions**—which are simple, step-by-step guides for civic change. \n\nWould you like to explore a category below, or do you have a specific problem in mind?");
-                    renderChips(THEMES);
-                }, 500);
+                // Show Welcome Choice Board
+                document.getElementById('welcome-screen').style.display = 'flex';
             } else {
                 appendMessage('assistant', "Welcome back! Ready to continue your change-maker journey?");
+            }
+        }
+
+        async function selectOption(id, text) {
+            // Hide welcome screen
+            document.getElementById('welcome-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('welcome-screen').style.display = 'none';
+            }, 300);
+
+            // If Option 4, show the initial greeting + themes
+            if (id === 4) {
+                appendMessage('assistant', "I'm ready to help you solve a local problem! \n\nWhat kind of issue are you facing? You can pick a category below or tell me in your own words.");
+                renderChips(THEMES);
+            } else {
+                // For 1, 2, 3 - just send the message for now
+                userInput.value = text;
+                handleSend(new Event('submit'));
             }
         }
 
